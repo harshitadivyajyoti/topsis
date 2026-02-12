@@ -54,8 +54,8 @@ def topsis(input_file, weights, impacts, output_file):
 
 
 def send_email(receiver_email, file_path):
-    sender_email = "harshitadivyajyoti@gmail.com"
-    sender_password = "rjabpmlqnselfenf"
+    sender_email = "your_email_here"
+    sender_password = "your_app_password_here"
 
     msg = EmailMessage()
     msg["Subject"] = "TOPSIS Result"
@@ -100,4 +100,5 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # The important part is host="0.0.0.0"
+    app.run(host="0.0.0.0", port=5000)
