@@ -1,104 +1,160 @@
-from flask import Flask, render_template, request
 import os
 import smtplib
 from email.message import EmailMessage
 import pandas as pd
 import numpy as np
+from flask import Flask, render_template, request
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# --- CONFIGURATION ---
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "results"
 
+# 1. Create folders if they don't exist (Fixes the GitHub issue)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['RESULT_FOLDER'] = RESULT_FOLDER
 
-def topsis(input_file, weights, impacts, output_file):
-    df = pd.read_excel(input_file)
+def calculate_topsis(input_file, weights, impacts, output_file):
+    try:
+        # Read the Excel file
+        df = pd.read_excel(input_file)
+        
+        # Check sufficient columns
+        if df.shape[1] < 3:
+            raise ValueError("Input file must contain three or more columns.")
 
-    if df.shape[1] < 3:
-        raise ValueError("Input file must contain three or more columns.")
+        # Extract numeric data (assuming first column is Fund Name/ID)
+        data = df.iloc[:, 1:].values.astype(float)
+        
+        # Check if weights match columns
+        if len(weights) != data.shape[1]:
+            raise ValueError(f"Number of weights ({len(weights)}) does not match number of columns ({data.shape[1]}).")
+        if len(impacts) != data.shape[1]:
+            raise ValueError(f"Number of impacts ({len(impacts)}) does not match number of columns ({data.shape[1]}).")
 
-    data = df.iloc[:, 1:].values
+        # Vector Normalization
+        rss = np.sqrt(np.sum(data**2, axis=0))
+        normalized_data = data / rss
 
-    if not np.issubdtype(data.dtype, np.number):
-        raise ValueError("All criteria columns must be numeric.")
+        # Weighted Normalization
+        weighted_data = normalized_data * weights
 
-    weights = np.array(weights)
-    impacts = np.array(impacts)
+        # Ideal Best and Worst
+        ideal_best = []
+        ideal_worst = []
 
-    # Normalization
-    norm = data / np.sqrt((data ** 2).sum(axis=0))
+        for i in range(data.shape[1]):
+            if impacts[i] == '+':
+                ideal_best.append(np.max(weighted_data[:, i]))
+                ideal_worst.append(np.min(weighted_data[:, i]))
+            else: # Impact is '-'
+                ideal_best.append(np.min(weighted_data[:, i]))
+                ideal_worst.append(np.max(weighted_data[:, i]))
+        
+        ideal_best = np.array(ideal_best)
+        ideal_worst = np.array(ideal_worst)
 
-    # Weighted normalization
-    weighted = norm * weights
+        # Euclidean Distance
+        S_plus = np.sqrt(np.sum((weighted_data - ideal_best)**2, axis=1))
+        S_minus = np.sqrt(np.sum((weighted_data - ideal_worst)**2, axis=1))
 
-    # Ideal best and worst
-    ideal_best = np.max(weighted, axis=0)
-    ideal_worst = np.min(weighted, axis=0)
+        # Topsis Score
+        # Avoid division by zero
+        score = S_minus / (S_plus + S_minus + 1e-9)
 
-    for i in range(len(impacts)):
-        if impacts[i] == '-':
-            ideal_best[i], ideal_worst[i] = ideal_worst[i], ideal_best[i]
+        df['Topsis Score'] = score
+        df['Rank'] = df['Topsis Score'].rank(ascending=False).astype(int)
 
-    # Distance
-    dist_best = np.sqrt(((weighted - ideal_best) ** 2).sum(axis=1))
-    dist_worst = np.sqrt(((weighted - ideal_worst) ** 2).sum(axis=1))
+        # Save result
+        df.to_excel(output_file, index=False)
+        return True, "Success"
 
-    score = dist_worst / (dist_best + dist_worst)
-    df["Topsis Score"] = score
-    df["Rank"] = df["Topsis Score"].rank(ascending=False)
-
-    df.to_excel(output_file, index=False)
-
+    except Exception as e:
+        return False, str(e)
 
 def send_email(receiver_email, file_path):
-    sender_email = "your_email_here"
-    sender_password = "your_app_password_here"
+    # 2. GET CREDENTIALS SECURELY FROM ENVIRONMENT VARIABLES
+    sender_email = os.getenv("EMAIL_SENDER")  # Must be set in Render Env Vars
+    sender_password = os.getenv("EMAIL_PASSWORD") # Must be set in Render Env Vars
+
+    if not sender_email or not sender_password:
+        print("Error: Email credentials are missing in Environment Variables.")
+        return False
 
     msg = EmailMessage()
-    msg["Subject"] = "TOPSIS Result"
-    msg["From"] = sender_email
-    msg["To"] = receiver_email
-    msg.set_content("Please find attached the TOPSIS result file.")
+    msg['Subject'] = "Your TOPSIS Analysis Result"
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg.set_content("Hello,\n\nPlease find attached the result of your TOPSIS analysis.\n\nBest Regards,\nTopsis Web App")
 
-    with open(file_path, "rb") as f:
+    # Attach the file
+    with open(file_path, 'rb') as f:
         file_data = f.read()
         file_name = os.path.basename(file_path)
 
-    msg.add_attachment(file_data, maintype="application",
-                       subtype="octet-stream", filename=file_name)
+    msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(sender_email, sender_password)
-        smtp.send_message(msg)
-
+    # Send Email
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        file = request.files["file"]
-        weights = request.form["weights"]
-        impacts = request.form["impacts"]
-        email = request.form["email"]
+        try:
+            # 1. Get Form Data
+            if 'file' not in request.files:
+                return "No file part"
+            
+            file = request.files["file"]
+            if file.filename == '':
+                return "No selected file"
 
-        weights = list(map(float, weights.split(",")))
-        impacts = impacts.split(",")
+            weights_str = request.form["weights"]
+            impacts_str = request.form["impacts"]
+            email = request.form["email"]
 
-        input_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        output_path = os.path.join(RESULT_FOLDER, "result.xlsx")
+            # 2. Parse Weights and Impacts
+            weights = list(map(float, weights_str.split(",")))
+            impacts = impacts_str.split(",")
 
-        file.save(input_path)
+            # 3. Save Uploaded File
+            filename = secure_filename(file.filename)
+            input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            output_path = os.path.join(app.config['RESULT_FOLDER'], f"result_{filename}")
+            
+            file.save(input_path)
 
-        topsis(input_path, weights, impacts, output_path)
-        send_email(email, output_path)
+            # 4. Run Topsis
+            success, message = calculate_topsis(input_path, weights, impacts, output_path)
+            
+            if not success:
+                return f"Error in calculation: {message}"
 
-        return "Result sent to your email!"
+            # 5. Send Email
+            email_sent = send_email(email, output_path)
+
+            if email_sent:
+                return "Success! The result has been sent to your email."
+            else:
+                return "Calculation done, but failed to send email. Check server logs."
+
+        except Exception as e:
+            return f"An error occurred: {str(e)}"
 
     return render_template("index.html")
 
-
 if __name__ == "__main__":
-    # The important part is host="0.0.0.0"
+    # 3. FIX HOST FOR RENDER
     app.run(host="0.0.0.0", port=5000)
