@@ -4,9 +4,7 @@
 **Harshita**  
 **Roll Number:** 102317208  
 
----
 
-```bash
 # Project Overview
 # This project implements the TOPSIS (Technique for Order Preference by Similarity to Ideal Solution) method
 # for multi-criteria decision making. It includes command line tools, a PyPI package, and a web service.
