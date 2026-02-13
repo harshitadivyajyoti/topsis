@@ -1,61 +1,68 @@
-# Topsis-Harshita-102317208
+# TOPSIS Implementation and Web Service
 
-A Python package implementing the TOPSIS (Technique for Order Preference by Similarity to Ideal Solution) method for multi-criteria decision making.
-
----
-
-##  Installation
-
-```bash
-pip install Topsis-Harshita-102317208
-```
+## Author
+**Harshita**  
+**Roll Number:** 102317208  
 
 ---
 
-##  Command Line Usage
-
 ```bash
-topsis <InputDataFile> <Weights> <Impacts> <OutputResultFileName>
-```
+# Project Overview
+# This project implements the TOPSIS (Technique for Order Preference by Similarity to Ideal Solution) method
+# for multi-criteria decision making. It includes command line tools, a PyPI package, and a web service.
 
-### Example
+# Part I – Command Line TOPSIS
 
-```bash
+# Usage
+python topsis.py <InputFile> <Weights> <Impacts> <OutputFile>
+python topsis.py data.xlsx "1,1,1,2" "+,+,-,+" result.xlsx
+
+# Input Rules
+# Minimum Columns: 3 (First column is Alternatives/Names)
+# Numeric Data: All columns from the 2nd onwards must be numeric
+# Weights/Impacts: Must match the number of numeric columns
+# Impacts: Must be either + (Beneficial) or - (Non-beneficial)
+# Format: Comma-separated strings for weights and impacts
+
+# Part II – PyPI Package
+
+# Package Name: topsis-harshita-102317208
+pip install topsis-harshita-102317208
 topsis data.xlsx "1,1,1,2" "+,+,-,+" result.xlsx
-```
+# PyPI Link: https://pypi.org/project/topsis-harshita-102317208/
 
----
+# Part III – Web Service
 
-##  Input File Requirements
+# Live Demo: https://topsis-faef.onrender.com
 
-- Input file must contain **three or more columns**
-- First column should contain alternatives (non-numeric allowed)
-- From second column onward, all values must be numeric
-- Number of weights = number of impacts = number of criteria columns
-- Impacts must be either '+' or '-'
-- Weights and impacts must be comma separated
+# Features
+# Excel Upload: Supports .xlsx and .csv file processing
+# Parameter Validation: Ensures weights and impacts are correctly formatted before processing
+# Automated Results: Calculates scores and ranks, then attempts to email the result file
 
----
+# Technical Note on Email Delivery
+# In the cloud production environment (Render), Gmail SMTP may be restricted due to "Suspicious Login" flags
+# Validation: If the app displays "Calculation done, but failed to send email", the TOPSIS logic executed correctly
 
-##  Output
+# Run Locally
+git clone <your-repo-link>
+cd topsis_web
+pip install -r requirements.txt
+python app.py
+# Open your browser at http://127.0.0.1:5000/
 
-The output file will contain:
-- Topsis Score
-- Rank of each alternative
+# Technologies Used
+# Language: Python
+# Data Analysis: Pandas, NumPy
+# Web Framework: Flask
+# Deployment: Render
+# DevOps: Git, PyPI, SMTP
 
----
+# Outcome
+# A comprehensive end-to-end decision-making tool that demonstrates:
+# - Advanced mathematical modeling in Python
+# - Building and maintaining public developer tools (PyPI)
+# - Developing and deploying full-stack web applications with cloud integration
+<img width="1806" height="755" alt="image" src="https://github.com/user-attachments/assets/f4b19494-b464-4640-b9d0-5e0fe3d4b1b3" />
+<img width="591" height="595" alt="image" src="https://github.com/user-attachments/assets/ce018773-4aec-44a1-a99a-823bd13afabf" />
 
-##  Features
-
-✔ Command line interface  
-✔ Input validation  
-✔ Exception handling  
-✔ Excel file support  
-✔ Automatic ranking  
-
----
-
-##  Author
-
-Harshita  
-Roll Number: 102317208
