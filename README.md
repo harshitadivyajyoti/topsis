@@ -63,4 +63,5 @@ Developing and deploying full-stack web applications with cloud integration
 
 Screenshots:
 ![image](https://github.com/user-attachments/assets/f4b19494-b464-4640-b9d0-5e0fe3d4b1b3)
-![image](https://github.com/user-attachments/assets/ce018773-4aec-44a1-a99a-823bd13afabf)
+<img width="1659" height="664" alt="image" src="https://github.com/user-attachments/assets/f099dbe7-578a-4bcb-95ed-fe4d8679f6d6" />
+
