@@ -23,7 +23,7 @@ Format: Comma-separated strings for weights and impacts
 Part II – PyPI Package
 
 Package Name: topsis-harshita-102317208
-Install & Run:
+Install & Run example:
 pip install topsis-harshita-102317208
 topsis data.xlsx "1,1,1,2" "+,+,-,+" result.xlsx
 PyPI Link: https://pypi.org/project/topsis-harshita-102317208/
